@@ -1,0 +1,146 @@
+#/!/bin/bash
+set -e; 
+
+
+# Check if name is specified
+if [[ $1 == mysql_dump:* ]] && [[ ! $1 == mysql_dump:save_all ]] && [[ ! $1 == mysql_dump:load_all ]]; then
+        echo "You must specify an app name"
+        exit 1
+    else
+        APP="$2"
+        # Check if app exists with the same name
+        if [[ -d "$DOKKU_ROOT/$APP" ]]; then
+            APP_EXISTS=true
+        else
+            APP_EXISTS=false
+        fi
+fi
+
+case "$1" in
+
+  mysql_dump:info)
+    echo "Dump lists"
+    echo ls $DOKKU_ROOT/.mysql/dumps/$APP
+    echo
+    ;;
+
+
+  mysql_dump:save_to_path)
+    DB_IMAGE=mysql/$APP
+    ID=$(docker ps -a | grep "$DB_IMAGE":latest |  awk '{print $1}')
+    IP=`echo $(docker inspect -format="{{ .NetworkSettings.IPAddress }}" $ID)`
+
+    # Check password file
+    if [[ ! -f "$DOKKU_ROOT/.mysql/pwd_$APP" ]]; then
+       echo "----! Database password does not exist"
+       exit 1
+    fi
+
+    DB_PASSWORD=$(cat "$DOKKU_ROOT/.mysql/pwd_$APP")
+
+    FILE_NAME=$3
+    if [[ -z $3 ]]; then
+      echo "----> Database name will $APP"
+      FILE_NAME=$APP
+    fi
+
+    mysqldump -uadmin -h$IP -p$DB_PASSWORD -P3306 --quick db > $FILE_NAME
+    echo "-----> Database dump saved"
+    ;;
+  
+  mysql_dump:save_dump)
+    echo "----> Saving $APP sql dump"
+    if [[ !  -d "$DOKKU_ROOT/.mysql/dumps" ]]; then
+        mkdir $DOKKU_ROOT/.mysql/dumps
+        chown dokku $DOKKU_ROOT/.mysql/dumps
+    fi
+
+    if [[ !  -d "$DOKKU_ROOT/.mysql/dumps/$APP" ]]; then
+        mkdir $DOKKU_ROOT/.mysql/dumps/$APP
+        chown dokku $DOKKU_ROOT/.mysql/dumps/$APP
+    fi
+    dokku mysql_dump:save_to_path $APP $DOKKU_ROOT/.mysql/dumps/$APP/$APP.`date "+%Y-%m-%d-%T"`.sql
+  ;;
+
+  mysql_dump:load_dump)
+    DB_IMAGE=mysql/$APP
+    ID=$(docker ps -a | grep "$DB_IMAGE":latest |  awk '{print $1}')
+    IP=`echo $(docker inspect -format="{{ .NetworkSettings.IPAddress }}" $ID)`
+    FILE_NAME=$3
+    # Check password file
+    if [[ ! -f "$DOKKU_ROOT/.mysql/pwd_$APP" ]]; then
+       echo "----! Database password does not exist"
+       exit 1
+    fi
+
+     echo "----->Saving current mysql dump"
+     
+    dokku mysql_dump:save_dump $APP 
+    echo "-----> Old mysql db saved"
+
+    DB_PASSWORD=$(cat "$DOKKU_ROOT/.mysql/pwd_$APP")
+    
+   
+    if [[ ! -f $FILE_NAME ]]; then
+      echo "----! File $FILE_NAME does not exists"
+      exit 1
+    fi
+
+
+    mysql -uadmin -h$IP -p$DB_PASSWORD -P3306 -f --quick db < $FILE_NAME
+    echo "-----> Database dump loaded"
+
+    ;;
+  
+  mysql_dump:load_all)
+    echo "----> Loading all dumps"
+    IMAGES=$(docker ps -a | grep "mysql" |  awk '{print $2}')
+    echo "-----> List mysql images"
+    echo $IMAGES
+    DUMPS_DIR="$DOKKU_ROOT/.mysql/dumps/"
+    for image in $IMAGES
+    do
+        image=${image#mysql/}
+        image=${image%:latest}
+        LAST_DUMP=ls "$DUMPS_DIR/$image/" -t | head -n1
+        if [ ! -f "$DUMPS_DIR/$image/LAST_DUMP" ]; then
+           echo "-----! No dumps for $image"
+           continue
+        fi
+        dokku mysql_dump:load_dump $image "$DUMPS_DIR/$image/LAST_DUMP"
+    done  
+  ;;
+ 
+  mysql_dump:save_all)
+    echo "----> Saving all dumps"
+    IMAGES=$(docker ps -a | grep "mysql" |  awk '{print $2}')
+    echo "-----> List mysql images"
+    echo $IMAGES
+    for image in $IMAGES
+    do
+        image=${image#mysql/}
+        image=${image%:latest}
+        echo "working with $image"
+
+        dokku mysql_dump:save_dump $image
+    done
+
+  ;;
+
+  mysql_dump-tests)
+        echo ">>> Running Tests"
+        /usr/bin/shunit2 /var/lib/dokku/plugins/mysql/tests/commands
+    ;;
+
+  help)
+    cat && cat<<EOF
+    mysql_dump:info <app>       Display database dumps informations
+    mysql_dump:save_dump <db> Save dump from container to default path
+    mysql_dump:load_dump <db> <filename> Load dump to container
+    mysql_dump:save_to_path <db> <path> Save dump to path
+    mysql_dump:load_all Load all dumps from default path
+    mysql_dump:save_all Save all dumps to default path
+EOF
+    ;;
+
+esac
