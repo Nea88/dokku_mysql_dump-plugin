@@ -4,6 +4,7 @@ set -e;
 
 # Check if name is specified
 if [[ $1 == mysql_dump:* ]] && [[ ! $1 == mysql_dump:save_all ]] && [[ ! $1 == mysql_dump:load_all ]]; then
+    if [[ -z $2 ]]; then        
         echo "You must specify an app name"
         exit 1
     else
@@ -14,6 +15,7 @@ if [[ $1 == mysql_dump:* ]] && [[ ! $1 == mysql_dump:save_all ]] && [[ ! $1 == m
         else
             APP_EXISTS=false
         fi
+   fi
 fi
 
 case "$1" in
