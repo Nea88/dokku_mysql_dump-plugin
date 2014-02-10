@@ -97,13 +97,13 @@ case "$1" in
     IMAGES=$(docker ps -a | grep "mysql" |  awk '{print $2}')
     echo "-----> List mysql images"
     echo $IMAGES
-    DUMPS_DIR="$DOKKU_ROOT/.mysql/dumps/"
+    DUMPS_DIR="$DOKKU_ROOT/.mysql/dumps"
     for image in $IMAGES
     do
         image=${image#mysql/}
         image=${image%:latest}
         LAST_DUMP=ls "$DUMPS_DIR/$image/" -t | head -n1
-        if [ ! -f "$DUMPS_DIR/$image/LAST_DUMP" ]; then
+        if [ ! -f "$DUMPS_DIR/$image/$LAST_DUMP" ]; then
            echo "-----! No dumps for $image"
            continue
         fi
