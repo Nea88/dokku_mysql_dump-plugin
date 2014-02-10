@@ -127,6 +127,18 @@ case "$1" in
 
   ;;
 
+  mysql_dump:get_dump_from_url)
+     if [[ ! $3 ]] || [[ ! $4 ]] || [[ ! $5 ]] || [[ ! $6 ]]; then
+        echo "----! You must specify all params"
+        exit 1
+     fi
+     USER=$3
+     DB_PASSWORD=$4
+     IP=$5
+     PORT=$6
+     mysqldump -u$USER -h$IP -p$DB_PASSWORD -P$PORT --quick db > $DOKKU_ROOT/.mysql/dumps/$APP/$APP.`date "+%Y-%m-%d-%T"`.sql
+  ;;
+
   mysql_dump-tests)
         echo ">>> Running Tests"
         /usr/bin/shunit2 /var/lib/dokku/plugins/mysql/tests/commands
@@ -140,6 +152,7 @@ case "$1" in
     mysql_dump:save_to_path <db> <path> Save dump to path
     mysql_dump:load_all Load all dumps from default path
     mysql_dump:save_all Save all dumps to default path
+    mysql_dump:get_dump_from_url <app> <user> <password> <host> <port>
 EOF
     ;;
 
