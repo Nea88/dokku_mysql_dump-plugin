@@ -17,6 +17,7 @@ Save and load mysql dump
     mysql_dump:load_all Load all dumps from default path
     mysql_dump:save_all Save all dumps to default path
     mysql_dump:get_dump_from_url <app> <user> <password> <host> <port>
+    mysql_dump:clear_db <db>    drop all tables from custom db
 
 ##Simple usage
 
@@ -43,5 +44,3 @@ https://github.com/Nea88/dokku_mysql_wp_plugin.git
 
 ##Thanks
 * [hughfletcher/dokku-mysql-plugin](https://github.com/hughfletcher/dokku-mysql-plugin)
-
-

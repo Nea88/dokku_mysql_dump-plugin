@@ -141,6 +141,24 @@ case "$1" in
      mysqldump -u$USER -h$IP -p$DB_PASSWORD -P$PORT --quick db > $DOKKU_ROOT/.mysql/dumps/$APP/$APP.`date "+%Y-%m-%d-%T"`.sql
   ;;
 
+  mysql_dump:clear_db)
+    echo "----> Warning, all tables will be droped!"
+    DB_IMAGE=mysql/$APP
+    ID=$(docker ps -a | grep "$DB_IMAGE":latest |  awk '{print $1}')
+    IP=`echo $(docker inspect -format="{{ .NetworkSettings.IPAddress }}" $ID)`
+
+    # Check password file
+    if [[ ! -f "$DOKKU_ROOT/.mysql/pwd_$APP" ]]; then
+       echo "----! Database password does not exist"
+       exit 1
+    fi
+
+    DB_PASSWORD=$(cat "$DOKKU_ROOT/.mysql/pwd_$APP")
+
+    mysqldump -uadmin -h$IP -p$DB_PASSWORD --add-drop-table --no-data db | \
+        grep ^DROP | mysql -uadmin -p$DB_PASSWORD -h$IP
+  ;;
+
   mysql_dump-tests)
         echo ">>> Running Tests"
         /usr/bin/shunit2 /var/lib/dokku/plugins/mysql/tests/commands
@@ -155,6 +173,7 @@ case "$1" in
     mysql_dump:load_all Load all dumps from default path
     mysql_dump:save_all Save all dumps to default path
     mysql_dump:get_dump_from_url <app> <user> <password> <host> <port>
+    mysql_dump:clear_db <db>    drop all tables from custom db
 EOF
     ;;
 
