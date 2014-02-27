@@ -1,10 +1,10 @@
 #/!/bin/bash
-set -e; 
+set -e;
 
 
 # Check if name is specified
 if [[ $1 == mysql_dump:* ]] && [[ ! $1 == mysql_dump:save_all ]] && [[ ! $1 == mysql_dump:load_all ]]; then
-    if [[ -z $2 ]]; then        
+    if [[ -z $2 ]]; then
         echo "You must specify an app name"
         exit 1
     else
@@ -49,18 +49,13 @@ case "$1" in
     mysqldump -uadmin -h$IP -p$DB_PASSWORD -P3306 --quick db > $FILE_NAME
     echo "-----> Database dump saved"
     ;;
-  
+
   mysql_dump:save_dump)
     echo "----> Saving $APP sql dump"
-    if [[ !  -d "$DOKKU_ROOT/.mysql/dumps" ]]; then
-        mkdir $DOKKU_ROOT/.mysql/dumps
-        chown dokku $DOKKU_ROOT/.mysql/dumps
-    fi
 
-    if [[ !  -d "$DOKKU_ROOT/.mysql/dumps/$APP" ]]; then
-        mkdir $DOKKU_ROOT/.mysql/dumps/$APP
-        chown dokku $DOKKU_ROOT/.mysql/dumps/$APP
-    fi
+    mkdir -p $DOKKU_ROOT/.mysql/dumps/$APP
+    chown dokku $DOKKU_ROOT/.mysql/dumps/$APP
+
     dokku mysql_dump:save_to_path $APP $DOKKU_ROOT/.mysql/dumps/$APP/$APP.`date "+%Y-%m-%d-%T"`.sql
   ;;
 
@@ -76,13 +71,13 @@ case "$1" in
     fi
 
      echo "----->Saving current mysql dump"
-     
-    dokku mysql_dump:save_dump $APP 
+
+    dokku mysql_dump:save_dump $APP
     echo "-----> Old mysql db saved"
 
     DB_PASSWORD=$(cat "$DOKKU_ROOT/.mysql/pwd_$APP")
-    
-   
+
+
     if [[ ! -f $FILE_NAME ]]; then
       echo "----! File $FILE_NAME does not exists"
       exit 1
@@ -93,7 +88,7 @@ case "$1" in
     echo "-----> Database dump loaded"
 
     ;;
-  
+
   mysql_dump:load_all)
     echo "----> Loading all dumps"
     IMAGES=$(docker ps -a | grep "mysql" |  awk '{print $2}')
@@ -110,9 +105,9 @@ case "$1" in
            continue
         fi
         dokku mysql_dump:load_dump $image "$DUMPS_DIR/$image/LAST_DUMP"
-    done  
+    done
   ;;
- 
+
   mysql_dump:save_all)
     echo "----> Saving all dumps"
     IMAGES=$(docker ps -a | grep "mysql" |  awk '{print $2}')
